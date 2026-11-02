@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field , ConfigDict
 
 class JunctionCreate(BaseModel):
     junction_name: str = Field(min_length=4,max_length=255)
@@ -9,6 +9,7 @@ class JunctionCreate(BaseModel):
     is_active: bool=True
 
 class JunctionResponse(JunctionCreate):
+    model_config = ConfigDict(from_attributes=True)
     id: int
     created_at: datetime
     updated_at: datetime
