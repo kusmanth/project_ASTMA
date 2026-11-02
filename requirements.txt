@@ -1,0 +1,116 @@
+AI SMART TRAFFIC MANAGEMENT AGENT:
+
+1) Junctions:-
+-> id
+-> junction name 4-255 string
+-> junction type (2 / 3 / 4 / 5 road)
+-> address_id (FK from address table: the readable address of the junction)
+-> latitude (exact map point, used to find distance between junctions)
+-> longitude
+-> is active true/false
+-> created timestamp
+-> updated timestamp
+
+
+2) Roads:-
+-> id
+-> road name
+-> from junction_id
+-> to junction_id
+-> distance(in km)
+-> road lanes(eg. 2,4,6)
+-> active status (true/ flase)
+-> update status[-> previously update
+                 -> current update]
+
+3) Signal:-
+-> id (we give this to 1 purticular side of a junction)
+-> junction_id(FK from junction table)
+-> road_id(FK from roads table)
+-> current state(green/yellow/red)
+-> update status
+
+4) Signal timings:-
+-> id (we store the time slots)
+-> signal_id(FK from signals table)
+-> time_slots:
+              -> start_time(eg. 09:00 am)
+              -> end_time(eg. 11:30 am)
+-> green_time(seconds)
+-> yellow_time(seconds)
+-> red_time(seconds)
+-> update status
+
+5) Traffic readings:-
+-> id
+-> road_id(FK from roads table)
+-> vehicle count:-
+                  -> two_wheeler
+                  -> three_wheeler
+                  -> four_wheeler
+                  -> heavy vehicles(bus/truck)
+-> congestion level(it calculates accoring to the road size):-
+         -> low
+         -> medium
+         -> high
+-> reading_time (to keep the history)
+
+6) Emergency vehicles(ev):-
+-> id
+-> vehicle number
+-> vehicle type (ambulance / fire truck / police / vvip convoy)
+-> priority level (different for different vehicles)
+-> active status (true/false)
+-> update status
+
+7) Emergency trips:-
+-> id
+-> vehicle_id(FK from emergency vehicles table)
+->created_by(Fk from users table)
+-> from_junction_id(FK from junctions table)
+-> to_junction_id (FK from junctions table)
+-> urgency level:-
+                 -> crictical(all lights green in the path)
+                 -> normal(only if the road isn't in peak congestion)
+                 -> none(no priority,treated like normal traffic)
+-> start time
+-> end time (empty until the trip is over)
+-> status (active / completed / cancelled)
+-> update status
+
+8) Users
+-> id
+-> name 4-255 string
+-> mobile 10 number
+-> email 4-255 string (optional)
+-> user type:-
+              -> driver
+              -> emergency driver
+              -> police
+              -> admin
+-> password (hashed)
+-> active status(true/false)
+-> update status
+
+9) Route requests
+-> id
+-> user_id (FK from users table)
+-> from_junction_id (FK from junctions table)
+-> to_junction_id (FK from junctions table)
+-> suggested route (list of road id's)
+-> status:-
+           -> active
+           -> completed
+-> time_stamp:-
+               -> requested_at
+               -> expires_at (deleted automatically after this)
+
+10) Address 
+-> id
+-> street / area (e.g. “MG Road, Ameerpet”)
+-> landmark (optional, e.g. “near Metro station”)
+-> city
+-> state
+-> pincode 6 number
+-> created timestamp
+-> updated timestamp
