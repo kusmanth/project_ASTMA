@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -82,5 +83,9 @@ def update_junction_status(junction_id: int, data: JunctionStatusUpdate, db: Ses
 @router.delete("/{junction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_junction(junction_id: int, db: Session = Depends(get_db)):
     junction = get_junction_or_404(junction_id, db)
-    db.delete(junction)
-    db.commit()
+    try:
+        db.delete(junction)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Junction is used by a road and cannot be deleted")
