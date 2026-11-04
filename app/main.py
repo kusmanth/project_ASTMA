@@ -1,11 +1,14 @@
-from fastapi import FastAPI
-from app.routers import junction, address, road, signal
 
-app= FastAPI(title="ASTMA API")
+from fastapi import FastAPI
+from app.routers import junction, address, road, signal, traffic_reading
+
+app = FastAPI(title="ASTMA API")
+
 app.include_router(junction.router)
 app.include_router(address.router)
 app.include_router(road.router)
 app.include_router(signal.router)
+app.include_router(traffic_reading.router)
 
 
 @app.get("/")
