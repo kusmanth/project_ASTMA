@@ -17,7 +17,7 @@ def get_address_or_404(address_id: int, db: Session) -> Address:
     return address
 
 
-@router.post("/", response_model=AddressResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=AddressResponse, status_code=status.HTTP_201_CREATED)
 def create_address(data: AddressCreate, db: Session = Depends(get_db)):
     address = Address(**data.model_dump())
     db.add(address)
@@ -26,7 +26,7 @@ def create_address(data: AddressCreate, db: Session = Depends(get_db)):
     return address
 
 
-@router.get("/", response_model=list[AddressResponse])
+@router.get("", response_model=list[AddressResponse])
 def get_all_addresses(db: Session = Depends(get_db)):
     return db.scalars(select(Address)).all()
 
