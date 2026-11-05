@@ -24,7 +24,7 @@ def check_junction_and_road(junction_id: int, road_id: int, db: Session) -> None
     if road.to_junction_id != junction_id:
         raise HTTPException(status_code=400, detail=f"Road {road_id} does not come into junction {junction_id}")
         
-@router.post("/", response_model=SignalResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=SignalResponse, status_code=status.HTTP_201_CREATED)
 def create_signal(data: SignalCreate, db: Session = Depends(get_db)):
     check_junction_and_road(data.junction_id, data.road_id, db)
     signal = Signal(**data.model_dump())
@@ -33,7 +33,7 @@ def create_signal(data: SignalCreate, db: Session = Depends(get_db)):
     db.refresh(signal)
     return signal
 
-@router.get("/", response_model=list[SignalResponse])
+@router.get("", response_model=list[SignalResponse])
 def get_all_signals(db: Session = Depends(get_db)):
     return db.scalars(select(Signal)).all()
 
