@@ -16,7 +16,7 @@ router = APIRouter(
 )
 
 
-@router.post("/", response_model=SignalTimingResponse, status_code=201)
+@router.post("", response_model=SignalTimingResponse, status_code=201)
 def create_signal_timing(
     timing: SignalTimingCreate,
     db: Session = Depends(get_db)
@@ -28,7 +28,7 @@ def create_signal_timing(
     return db_timing
 
 
-@router.get("/", response_model=list[SignalTimingResponse])
+@router.get("", response_model=list[SignalTimingResponse])
 def get_signal_timings(db: Session = Depends(get_db)):
     return db.query(SignalTiming).all()
 
