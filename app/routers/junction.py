@@ -27,7 +27,7 @@ def check_address_exists(address_id: int, db: Session) -> None:
         raise HTTPException(status_code=400, detail=f"Address {address_id} does not exist")
 
 
-@router.post("/", response_model=JunctionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=JunctionResponse, status_code=status.HTTP_201_CREATED)
 def create_junction(data: JunctionCreate, db: Session = Depends(get_db)):
     check_address_exists(data.address_id, db)
     junction = Junction(**data.model_dump())
@@ -37,7 +37,7 @@ def create_junction(data: JunctionCreate, db: Session = Depends(get_db)):
     return junction
 
 
-@router.get("/", response_model=list[JunctionResponse])
+@router.get("", response_model=list[JunctionResponse])
 def get_all_junctions(db: Session = Depends(get_db)):
     return db.scalars(select(Junction)).all()
 

@@ -25,7 +25,7 @@ def check_junctions(from_id: int, to_id: int, db: Session) -> None:
             raise HTTPException(status_code=400, detail=f"Junction {junction_id} does not exist")
 
 
-@router.post("/", response_model=RoadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=RoadResponse, status_code=status.HTTP_201_CREATED)
 def create_road(data: RoadCreate, db: Session = Depends(get_db)):
     check_junctions(data.from_junction_id, data.to_junction_id, db)
     road = Road(**data.model_dump())
@@ -35,7 +35,7 @@ def create_road(data: RoadCreate, db: Session = Depends(get_db)):
     return road
 
 
-@router.get("/", response_model=list[RoadResponse])
+@router.get("", response_model=list[RoadResponse])
 def get_all_roads(db: Session = Depends(get_db)):
     return db.scalars(select(Road)).all()
 
