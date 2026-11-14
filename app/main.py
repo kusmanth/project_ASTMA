@@ -8,7 +8,7 @@ from app.routers import (
     traffic_reading,
     signal_timing,user,
     emergency_trip,
-    route_request,emergency_vehicle
+    route_request,emergency_vehicle,hospital,police_station
 )
 
 app = FastAPI(title="ASTMA API")
@@ -23,6 +23,8 @@ app.include_router(user.router)
 app.include_router(emergency_vehicle.router)
 app.include_router(emergency_trip.router)
 app.include_router(route_request.router)
+app.include_router(hospital.router)
+app.include_router(police_station.router)
 
 @app.get("/")
 def home():
