@@ -1,6 +1,6 @@
-"""MCP server: our FastAPI endpoints as tools. The FastAPI server must be running."""
 
 """MCP server: our FastAPI endpoints as tools. The FastAPI server must be running."""
+
 import os
 
 import httpx
@@ -69,6 +69,51 @@ def get_traffic_readings() -> dict:
     return call("GET", "/traffic-readings")
 
 
+# TRAFFIC SIGNAL AGENT TOOLS
+
+@mcp.tool()
+def get_signals() -> dict:
+    """Get all traffic signals."""
+    return call("GET", "/signals")
+
+
+@mcp.tool()
+def update_signal(signal_id: int, current_state: str) -> dict:
+    """Update a traffic signal state to green, yellow, or red."""
+    return call("PATCH", f"/signals/{signal_id}", {
+        "current_state": current_state
+    })
+
+
+@mcp.tool()
+def get_signal_timings() -> dict:
+    """Get all signal timing records."""
+    return call("GET", "/signal-timings")
+
+
+@mcp.tool()
+def update_signal_timing(
+    timing_id: int,
+    signal_id: int,
+    start_time: str,
+    end_time: str,
+    green_time: int,
+    yellow_time: int,
+    red_time: int
+) -> dict:
+    """Update an existing signal timing record."""
+    return call("PUT", f"/signal-timings/{timing_id}", {
+        "signal_id": signal_id,
+        "start_time": start_time,
+        "end_time": end_time,
+        "green_time": green_time,
+        "yellow_time": yellow_time,
+        "red_time": red_time
+    })
+
+
+# EMERGENCY MANAGEMENT AGENT TOOLS
+
 @mcp.tool()
 def create_emergency_trip(
     vehicle_id: int,
@@ -95,6 +140,8 @@ def update_emergency_trip_status(trip_id: int, status: str) -> dict:
     })
 
 
+# ROUTE OPTIMIZATION AGENT TOOL
+
 @mcp.tool()
 def create_route_request(
     user_id: int,
@@ -113,3 +160,4 @@ def create_route_request(
 
 if __name__ == "__main__":
     mcp.run()
+
