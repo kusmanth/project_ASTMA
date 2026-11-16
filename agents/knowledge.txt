@@ -1,0 +1,35 @@
+## Book emergency trip
+When to use: a NEW emergency trip must start. An emergency vehicle (ambulance, fire truck, police, VVIP convoy) needs to go from one junction to another right now. Words like book, start, send, needs to go, urgent, accident, fire. Not for a trip that has already reached, completed or finished.
+Agent: executor
+Who can do it: emergency_driver, police, admin
+Details needed: vehicle_number, from_junction (name), to_junction (name), urgency_level (critical, normal or none; use critical if the user says urgent or critical, otherwise normal)
+Steps:
+1. Find the vehicle by its number with find_vehicle_by_number. It must exist and is_active must be true.
+2. Get the current user with get_user. user_type must be emergency_driver, police or admin.
+3. Find the start junction with find_junction_by_name.
+4. Find the destination junction with find_junction_by_name. It must be different from the start junction.
+5. Create the trip with create_emergency_trip using the ids found above.
+Rules: a blocked vehicle cannot start a trip. A normal driver cannot start a trip. Stop and explain if any step fails.
+
+## End emergency trip
+When to use: an emergency trip that already started has now ended or must be stopped. Words like ambulance reached, arrived, trip completed, finished, done, cancel the trip, close the trip, mark as completed.
+Agent: executor
+Who can do it: emergency_driver, police, admin
+Details needed: trip_id, status (completed or cancelled)
+Steps:
+1. Get the current user with get_user. user_type must be emergency_driver, police or admin.
+2. Update the trip with update_emergency_trip_status using the trip_id and the status.
+Rules: end_time is filled in automatically by the API.
+
+## Request a route
+When to use: a driver wants to go from one junction to another. Words like route, way, go to, reach, directions.
+Agent: executor
+Who can do it: any user
+Details needed: from_junction (name), to_junction (name)
+Steps:
+1. Find the start junction with find_junction_by_name.
+2. Find the destination junction with find_junction_by_name.
+3. Get all roads with list_roads. Each road goes one way, from from_junction_id to to_junction_id.
+4. Choose roads that form one connected path: the first road starts at the start junction, each next road starts where the previous one ended, and the last road ends at the destination. Prefer the shortest total distance_km.
+5. Save it with create_route_request using the current user id and the list of road ids.
+Rules: only use active roads. If no path exists, say so.
