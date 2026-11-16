@@ -22,11 +22,15 @@ def call(method: str, path: str, body: dict | None = None) -> dict:
     return {"status_code": response.status_code, "data": data}
 
 
+# USER MANAGEMENT TOOLS
+
 @mcp.tool()
 def get_user(user_id: int) -> dict:
     """Get one user by id, including user_type."""
     return call("GET", f"/users/{user_id}")
 
+
+# EMERGENCY VEHICLE TOOLS
 
 @mcp.tool()
 def find_vehicle_by_number(vehicle_number: str) -> dict:
@@ -43,6 +47,8 @@ def find_vehicle_by_number(vehicle_number: str) -> dict:
     }
 
 
+# JUNCTION MANAGEMENT TOOLS
+
 @mcp.tool()
 def find_junction_by_name(name: str) -> dict:
     """Find a junction by part of its name."""
@@ -56,6 +62,14 @@ def find_junction_by_name(name: str) -> dict:
         "data": matches or "Junction not found"
     }
 
+
+@mcp.tool()
+def get_junctions() -> dict:
+    """Get all junctions with their active status."""
+    return call("GET", "/junctions")
+
+
+# ROAD MANAGEMENT TOOLS
 
 @mcp.tool()
 def list_roads() -> dict:
@@ -160,4 +174,5 @@ def create_route_request(
 
 if __name__ == "__main__":
     mcp.run()
+
 
