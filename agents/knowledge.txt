@@ -1,5 +1,5 @@
 ## Book emergency trip
-When to use: an emergency vehicle (ambulance, fire truck, police, VVIP convoy) must go from one junction to another. Words like ambulance, emergency, urgent, accident, fire, book trip.
+When to use: a NEW emergency trip must start. An emergency vehicle (ambulance, fire truck, police, VVIP convoy) needs to go from one junction to another right now. Words like book, start, send, needs to go, urgent, accident, fire. Not for a trip that has already reached, completed or finished.
 Agent: executor
 Who can do it: emergency_driver, police, admin
 Details needed: vehicle_number, from_junction (name), to_junction (name), urgency_level (critical, normal or none; use critical if the user says urgent or critical, otherwise normal)
@@ -12,7 +12,7 @@ Steps:
 Rules: a blocked vehicle cannot start a trip. A normal driver cannot start a trip. Stop and explain if any step fails.
 
 ## End emergency trip
-When to use: an emergency trip is finished or must be cancelled. Words like reached, completed, finished, cancel trip.
+When to use: an emergency trip that already started has now ended or must be stopped. Words like ambulance reached, arrived, trip completed, finished, done, cancel the trip, close the trip, mark as completed.
 Agent: executor
 Who can do it: emergency_driver, police, admin
 Details needed: trip_id, status (completed or cancelled)
