@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 from app.routers import (
+    agent,
     junction,
     address,
     road,
@@ -25,6 +26,7 @@ app.include_router(emergency_trip.router)
 app.include_router(route_request.router)
 app.include_router(hospital.router)
 app.include_router(police_station.router)
+app.include_router(agent.router)
 
 @app.get("/")
 def home():
