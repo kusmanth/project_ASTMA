@@ -1,5 +1,5 @@
-
-"""MCP server: our FastAPI endpoints as tools. The FastAPI server must be running."""
+"""MCP server: our FastAPI endpoints as tools. The FastAPI server must be running.
+Gemini picks tools by reading the docstrings, so keep them clear and complete."""
 
 import os
 
@@ -11,18 +11,12 @@ mcp = FastMCP("astma")
 
 
 def call(method: str, path: str, body: dict | None = None) -> dict:
-    response = httpx.request(
-        method,
-        f"{API}{path}",
-        json=body,
-        timeout=15,
-        follow_redirects=True
-    )
+    response = httpx.request(method, f"{API}{path}", json=body, timeout=15, follow_redirects=True)
     data = response.json() if response.content else None
     return {"status_code": response.status_code, "data": data}
 
 
-# USER MANAGEMENT TOOLS
+# USER TOOLS
 
 @mcp.tool()
 def get_user(user_id: int) -> dict:
@@ -34,33 +28,21 @@ def get_user(user_id: int) -> dict:
 
 @mcp.tool()
 def find_vehicle_by_number(vehicle_number: str) -> dict:
-    """Find an emergency vehicle by its number."""
+    """Find an emergency vehicle by its number, for example TS09AB1234."""
     result = call("GET", "/emergency-vehicles")
     wanted = vehicle_number.replace(" ", "").upper()
-    matches = [
-        v for v in result["data"] or []
-        if v["vehicle_number"].replace(" ", "").upper() == wanted
-    ]
-    return {
-        "status_code": 200 if matches else 404,
-        "data": matches[0] if matches else "Vehicle not found"
-    }
+    matches = [v for v in result["data"] or [] if v["vehicle_number"].replace(" ", "").upper() == wanted]
+    return {"status_code": 200 if matches else 404, "data": matches[0] if matches else "Vehicle not found"}
 
 
-# JUNCTION MANAGEMENT TOOLS
+# JUNCTION TOOLS
 
 @mcp.tool()
 def find_junction_by_name(name: str) -> dict:
-    """Find a junction by part of its name."""
+    """Find a junction by (part of) its name, for example 'Ameerpet'."""
     result = call("GET", "/junctions")
-    matches = [
-        j for j in result["data"] or []
-        if name.lower() in j["junction_name"].lower()
-    ]
-    return {
-        "status_code": 200 if matches else 404,
-        "data": matches or "Junction not found"
-    }
+    matches = [j for j in result["data"] or [] if name.lower() in j["junction_name"].lower()]
+    return {"status_code": 200 if matches else 404, "data": matches or "Junction not found"}
 
 
 @mcp.tool()
@@ -69,21 +51,21 @@ def get_junctions() -> dict:
     return call("GET", "/junctions")
 
 
-# ROAD MANAGEMENT TOOLS
+# ROAD AND TRAFFIC TOOLS
 
 @mcp.tool()
 def list_roads() -> dict:
-    """List all roads with their lane count and active status."""
+    """List all roads with lanes and is_active. Each road goes one way: from_junction_id -> to_junction_id."""
     return call("GET", "/roads")
 
 
 @mcp.tool()
 def get_traffic_readings() -> dict:
-    """Get all traffic readings. This tool only reads data."""
+    """Get all traffic readings (vehicle counts per road with reading_time). Read only."""
     return call("GET", "/traffic-readings")
 
 
-# TRAFFIC SIGNAL AGENT TOOLS
+# TRAFFIC SIGNAL TOOLS
 
 @mcp.tool()
 def get_signals() -> dict:
@@ -93,10 +75,8 @@ def get_signals() -> dict:
 
 @mcp.tool()
 def update_signal(signal_id: int, current_state: str) -> dict:
-    """Update a traffic signal state to green, yellow, or red."""
-    return call("PATCH", f"/signals/{signal_id}", {
-        "current_state": current_state
-    })
+    """Update a traffic signal state to green, yellow or red."""
+    return call("PATCH", f"/signals/{signal_id}", {"current_state": current_state})
 
 
 @mcp.tool()
@@ -106,73 +86,44 @@ def get_signal_timings() -> dict:
 
 
 @mcp.tool()
-def update_signal_timing(
-    timing_id: int,
-    signal_id: int,
-    start_time: str,
-    end_time: str,
-    green_time: int,
-    yellow_time: int,
-    red_time: int
-) -> dict:
-    """Update an existing signal timing record."""
+def update_signal_timing(timing_id: int, signal_id: int, start_time: str, end_time: str,
+                         green_time: int, yellow_time: int, red_time: int) -> dict:
+    """Update an existing signal timing record. Times are HH:MM:SS, durations are seconds."""
     return call("PUT", f"/signal-timings/{timing_id}", {
-        "signal_id": signal_id,
-        "start_time": start_time,
-        "end_time": end_time,
-        "green_time": green_time,
-        "yellow_time": yellow_time,
-        "red_time": red_time
+        "signal_id": signal_id, "start_time": start_time, "end_time": end_time,
+        "green_time": green_time, "yellow_time": yellow_time, "red_time": red_time,
     })
 
 
-# EMERGENCY MANAGEMENT AGENT TOOLS
+# EMERGENCY TRIP TOOLS
 
 @mcp.tool()
-def create_emergency_trip(
-    vehicle_id: int,
-    created_by: int,
-    from_junction_id: int,
-    to_junction_id: int,
-    urgency_level: str
-) -> dict:
-    """Start an emergency trip."""
+def create_emergency_trip(vehicle_id: int, created_by: int, from_junction_id: int,
+                          to_junction_id: int, urgency_level: str) -> dict:
+    """Start an emergency trip. urgency_level is critical, normal or none."""
     return call("POST", "/emergency-trips", {
-        "vehicle_id": vehicle_id,
-        "created_by": created_by,
-        "from_junction_id": from_junction_id,
-        "to_junction_id": to_junction_id,
-        "urgency_level": urgency_level,
+        "vehicle_id": vehicle_id, "created_by": created_by, "from_junction_id": from_junction_id,
+        "to_junction_id": to_junction_id, "urgency_level": urgency_level,
     })
 
 
 @mcp.tool()
 def update_emergency_trip_status(trip_id: int, status: str) -> dict:
-    """End a trip. Status is completed or cancelled."""
-    return call("PATCH", f"/emergency-trips/{trip_id}", {
-        "status": status
-    })
+    """End a trip. status is completed or cancelled."""
+    return call("PATCH", f"/emergency-trips/{trip_id}", {"status": status})
 
 
-# ROUTE OPTIMIZATION AGENT TOOL
+# ROUTE TOOLS
 
 @mcp.tool()
-def create_route_request(
-    user_id: int,
-    from_junction_id: int,
-    to_junction_id: int,
-    suggested_route: list[int]
-) -> dict:
-    """Save a route using an ordered list of road IDs."""
+def create_route_request(user_id: int, from_junction_id: int, to_junction_id: int,
+                         suggested_route: list[int]) -> dict:
+    """Save a route: suggested_route is the ordered list of road ids."""
     return call("POST", "/route-requests", {
-        "user_id": user_id,
-        "from_junction_id": from_junction_id,
-        "to_junction_id": to_junction_id,
-        "suggested_route": suggested_route,
+        "user_id": user_id, "from_junction_id": from_junction_id,
+        "to_junction_id": to_junction_id, "suggested_route": suggested_route,
     })
 
 
 if __name__ == "__main__":
     mcp.run()
-
-

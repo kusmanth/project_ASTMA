@@ -48,9 +48,8 @@ def find_shortest_route(
 
         distance = road["distance_km"]
 
-        graph[start].append((end, distance, road["id"]))
-        graph[end].append((start, distance, road["id"]))
-
+        graph[start].append((end, distance, road["id"]))  # roads are one-way
+    
     distances = {junction_id: float("inf") for junction_id in active_junctions}
     previous = {}
 
