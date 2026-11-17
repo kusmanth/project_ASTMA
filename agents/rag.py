@@ -1,13 +1,20 @@
-"""RAG part of Agent 1: store the knowledge file in Pinecone and search it."""
+"""RAG part of Agent 1: read the knowledge documents (Word / PDF), store them in Pinecone, search them.
+
+Knowledge documents live in agents/knowledge/. One file = one task.
+The file name is the task name, for example "Book emergency trip.docx".
+"""
 import os
+import re
 from pathlib import Path
 
+from docx import Document
 from google.genai import types
 from pinecone import Pinecone, ServerlessSpec
+from pypdf import PdfReader
 
 from agents.llm import EMBED_MODEL, client
 
-KNOWLEDGE_FILE = Path(__file__).parent / "knowledge.txt"
+KNOWLEDGE_DIR = Path(__file__).parent / "knowledge"
 DIMENSIONS = 768
 INDEX_NAME = os.getenv("PINECONE_INDEX", "astma-knowledge")
 
@@ -27,12 +34,28 @@ def embed(texts: list[str], task_type: str) -> list[list[float]]:
     return [e.values for e in result.embeddings]
 
 
-def load_sections() -> list[tuple[str, str]]:
-    """Split the knowledge file into (task_name, content), one per '## ' heading."""
+def read_document(path: Path) -> str:
+    """Get the plain text out of a Word, PDF or text file."""
+    if path.suffix == ".docx":
+        return "\n".join(p.text for p in Document(path).paragraphs if p.text.strip())
+    if path.suffix == ".pdf":
+        return "\n".join(page.extract_text() or "" for page in PdfReader(path).pages)
+    return path.read_text(encoding="utf-8")
+
+
+def load_sections() -> list[tuple[str, str, str]]:
+    """Read every document in the knowledge folder: (task_name, content, file_name)."""
     sections = []
-    for block in KNOWLEDGE_FILE.read_text(encoding="utf-8").split("## ")[1:]:
-        task_name, _, body = block.partition("\n")
-        sections.append((task_name.strip(), body.strip()))
+    for path in sorted(KNOWLEDGE_DIR.iterdir()):
+        if path.suffix not in (".docx", ".pdf", ".txt") or path.name.startswith("~$"):
+            continue  # skip other files and Word's temporary "~$" files
+        task_name = path.stem
+        lines = [line.strip() for line in read_document(path).splitlines() if line.strip()]
+        if lines and lines[0].lower() == task_name.lower():
+            lines = lines[1:]  # the title is already the task name
+        sections.append((task_name, "\n".join(lines), path.name))
+    if not sections:
+        raise SystemExit(f"No .docx, .pdf or .txt files found in {KNOWLEDGE_DIR}")
     return sections
 
 
@@ -49,19 +72,22 @@ def get_index():
 
 
 def build_index() -> None:
-    """Run once (and again whenever knowledge.txt changes)."""
+    """Run once, and again whenever a knowledge document is added or changed."""
     sections = load_sections()
-    vectors = embed([f"{name}\n{body}" for name, body in sections], "RETRIEVAL_DOCUMENT")
+    vectors = embed([f"{name}\n{body}" for name, body, _ in sections], "RETRIEVAL_DOCUMENT")
     index = get_index()
     try:
         index.delete(delete_all=True)  # remove old tasks
     except Exception:
         pass  # a brand new index is empty, nothing to delete
     index.upsert(vectors=[
-        {"id": f"task-{i}", "values": vector, "metadata": {"task_name": name, "content": body}}
-        for i, ((name, body), vector) in enumerate(zip(sections, vectors), start=1)
+        {"id": re.sub(r"[^a-z0-9]+", "-", name.lower()), "values": vector,
+         "metadata": {"task_name": name, "content": body, "source": file_name}}
+        for (name, body, file_name), vector in zip(sections, vectors)
     ])
-    print(f"Stored {len(sections)} tasks in Pinecone index '{INDEX_NAME}': {[n for n, _ in sections]}")
+    for name, _, file_name in sections:
+        print(f"Stored '{name}' from {file_name}")
+    print(f"{len(sections)} tasks in Pinecone index '{INDEX_NAME}'")
 
 
 def search_top(question: str, k: int = 2) -> list[tuple[str, str, float]]:
