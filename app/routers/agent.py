@@ -3,6 +3,7 @@ import asyncio
 import sys
 
 from fastapi import APIRouter, HTTPException
+from google.genai import errors as ai_errors
 from pydantic import BaseModel, Field
 
 from agents.executor import execute
@@ -51,13 +52,32 @@ def junction_id(name: str) -> int:
     return result["data"][0]["id"]
 
 
+def real_error(error: Exception) -> Exception:
+    """The MCP client wraps errors in a group ("unhandled errors in a TaskGroup"). Get the real one."""
+    while isinstance(error, BaseExceptionGroup) and error.exceptions:
+        error = error.exceptions[0]
+    return error
+
+
+def agent_error(error: Exception, prefix: str) -> HTTPException:
+    """Turn any agent error into a clear message for the user."""
+    error = real_error(error)
+    if isinstance(error, ai_errors.APIError) and error.code == 429:
+        return HTTPException(status_code=429, detail="AI quota reached for today. Please try again later.")
+    if isinstance(error, ai_errors.ServerError):
+        return HTTPException(status_code=503, detail="The AI service is busy right now. Please try again in a minute.")
+    if isinstance(error, (ValueError, KeyError)):
+        return HTTPException(status_code=400, detail=str(error))
+    return HTTPException(status_code=502, detail=f"{prefix}: {error}")
+
+
 @router.post("/plan")
 def create_plan(body: PlanRequest):
     """Agent 1: understand the request and return a plan. Nothing is changed yet."""
     try:
         return make_plan(body.request, body.user_id)
     except Exception as error:
-        raise HTTPException(status_code=502, detail=f"Orchestrator failed: {error}")
+        raise agent_error(error, "Orchestrator failed")
 
 
 @router.post("/execute")
@@ -81,10 +101,8 @@ def execute_plan(body: ExecuteRequest):
             )
             return {"agent": "route_optimization", "result": result}
         return {"agent": "executor", "result": run_executor(plan, body.user_id)}
-    except (ValueError, KeyError) as error:
-        raise HTTPException(status_code=400, detail=str(error))
     except Exception as error:
-        raise HTTPException(status_code=502, detail=f"Agent failed: {error}")
+        raise agent_error(error, "Agent failed")
 
 
 # ---------- Direct buttons for each agent ----------

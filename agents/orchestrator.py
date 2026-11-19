@@ -3,7 +3,7 @@ import json
 
 from google.genai import types
 
-from agents.llm import CHAT_MODEL, client
+from agents.llm import generate
 from agents.rag import search_top
 
 MAX_DISTANCE = 0.6  # above this, a task is not close enough to be a candidate
@@ -44,8 +44,7 @@ def make_plan(request: str, user_id: int) -> dict:
 
     # 2. Gemini: choose the right task and write the plan
     text = "\n\n".join(f"### {name}\n{content}" for name, content, _ in candidates)
-    response = client.models.generate_content(
-        model=CHAT_MODEL,
+    response = generate(
         contents=PROMPT.format(user_id=user_id, candidates=text, request=request),
         config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0),
     )

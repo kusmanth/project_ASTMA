@@ -13,7 +13,7 @@ from google.genai import types
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from agents.llm import CHAT_MODEL, client
+from agents.llm import agenerate
 
 INSTRUCTIONS = """You are the Executor agent of ASTMA, a smart traffic management system.
 Carry out the plan step by step using the tools. Use the real ids returned by the tools.
@@ -50,8 +50,8 @@ async def execute(plan: dict, user_id: int) -> str:
                 text=f"Current user id: {user_id}\nPlan:\n{json.dumps(plan, indent=2)}")])]
 
             for _ in range(MAX_ROUNDS):
-                response = await client.aio.models.generate_content(
-                    model=CHAT_MODEL, contents=history, config=config)
+                response = await agenerate(
+                    contents=history, config=config)
 
                 # 4. No tool requested: this is the final answer
                 if not response.function_calls:
