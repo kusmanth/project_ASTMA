@@ -36,3 +36,8 @@ class UserResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+
+
+class LoginRequest(BaseModel):
+    login: str = Field(min_length=3, max_length=255, description="Mobile number or email")
+    password: str = Field(min_length=1, max_length=72)

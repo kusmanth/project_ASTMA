@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
-from app.schemas.user import UserCreate, UserResponse, UserUpdate
-from app.security import hash_password
+from app.schemas.user import LoginRequest, UserCreate, UserResponse, UserUpdate
+from app.security import hash_password, verify_password
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -40,6 +40,18 @@ def create_user(data: UserCreate, db: Session = Depends(get_db)):
     db.add(user)
     save(db)
     db.refresh(user)
+    return user
+
+
+@router.post("/login", response_model=UserResponse)
+def login(data: LoginRequest, db: Session = Depends(get_db)):
+    """Sign in with mobile number (or email) and password. Returns the user's details."""
+    login_value = data.login.strip()
+    user = db.scalar(select(User).where(or_(User.mobile == login_value, User.email == login_value)))
+    if user is None or not verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Wrong mobile/email or password")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="This account is inactive")
     return user
 
 
