@@ -9,8 +9,8 @@ EMAIL = r"^[^@\s]+@[^@\s]+\.[^@\s]+$"
 
 class UserCreate(BaseModel):
     name: str = Field(min_length=4, max_length=255)
-    mobile: str = Field(pattern=MOBILE)
-    email: str | None = Field(default=None, max_length=255, pattern=EMAIL)
+    mobile: str | None = Field(default=None, pattern=MOBILE)
+    email: str = Field(max_length=255, pattern=EMAIL)
     user_type: UserType
     password: str = Field(min_length=8, max_length=72)
     is_active: bool = True
@@ -30,7 +30,7 @@ class UserResponse(BaseModel):
 
     id: int
     name: str
-    mobile: str
+    mobile: str | None
     email: str | None
     user_type: str
     is_active: bool
