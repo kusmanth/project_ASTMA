@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, func
 from app.database import Base
 
 
@@ -12,6 +12,7 @@ class EmergencyTrip(Base):
     to_junction_id = Column(Integer, ForeignKey("junctions.id"), nullable=False)
     urgency_level = Column(String(10), nullable=False)
     status = Column(String(10), nullable=False, server_default="active")
+    route = Column(JSON, nullable=True)  # road ids of the green corridor, in order
     start_time = Column(DateTime, server_default=func.now(), nullable=False)
     end_time = Column(DateTime, nullable=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)

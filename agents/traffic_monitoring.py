@@ -30,8 +30,12 @@ def classify_traffic(density: float) -> str:
         return "high"
 
 
+# A reading older than this no longer describes traffic "now"
+FRESH_MINUTES = 30
+
+
 def check_reading_time(reading_time: str) -> bool:
-    """Check whether the reading is within the last 15 minutes."""
+    """Check whether the reading is within the last FRESH_MINUTES minutes."""
 
     timestamp = datetime.fromisoformat(reading_time.replace("Z", "+00:00"))
 
@@ -42,7 +46,7 @@ def check_reading_time(reading_time: str) -> bool:
 
     age = (current_time - timestamp).total_seconds() / 60
 
-    return 0 <= age <= 15
+    return 0 <= age <= FRESH_MINUTES
 
 
 def monitor_traffic() -> list:

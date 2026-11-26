@@ -26,6 +26,7 @@ class EmergencyTripResponse(EmergencyTripCreate):
 
     id: int
     status: str
+    route: list[int] | None = None
     start_time: datetime
     end_time: datetime | None
     created_at: datetime

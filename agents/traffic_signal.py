@@ -36,7 +36,7 @@ def get_green_time(traffic_status: str) -> int:
     return timings.get(traffic_status, 0)
 
 
-def manage_signal_timings():
+def manage_signal_timings() -> list:
     """Adjust signal timings according to traffic conditions."""
 
     print("\n===== TRAFFIC SIGNAL AGENT =====")
@@ -121,6 +121,56 @@ def manage_signal_timings():
                     f"\nCould not update signal {signal_id}: "
                     f"{result['data']}"
                 )
+
+    # Step 2: the other roads at each junction wait longer (or shorter) to match
+    return balance_red_times()
+
+
+def balance_red_times() -> list:
+    """At each junction the signals take turns: while one road is green, the others wait.
+
+    So a road's red time = green + yellow of every OTHER road at the same junction.
+    Example: greens 60, 30, 45 (yellow 5) -> reds 85, 115, 100.
+    """
+
+    signals = get_signals()["data"] or []
+    timings = get_signal_timings()["data"] or []
+    current_time = datetime.now().time()
+
+    # junction id -> list of (signal, its active timing)
+    junctions = {}
+    for signal in signals:
+        if not signal["is_active"]:
+            continue
+        active = [t for t in timings
+                  if t["signal_id"] == signal["id"] and is_active_timing(t, current_time)]
+        if active:
+            junctions.setdefault(signal["junction_id"], []).append((signal, active[0]))
+
+    changes = []
+    for junction_id, pairs in junctions.items():
+        if len(pairs) < 2:
+            continue  # a single signal has nobody to take turns with
+
+        cycle = sum(t["green_time"] + t["yellow_time"] for _, t in pairs)
+
+        for signal, timing in pairs:
+            new_red = cycle - (timing["green_time"] + timing["yellow_time"])
+            if timing["red_time"] == new_red:
+                continue
+            result = update_signal_timing(
+                timing_id=timing["id"], signal_id=signal["id"],
+                start_time=timing["start_time"], end_time=timing["end_time"],
+                green_time=timing["green_time"], yellow_time=timing["yellow_time"],
+                red_time=new_red,
+            )
+            if result["status_code"] in [200, 201]:
+                print(f"Junction {junction_id}, signal {signal['id']}: red time "
+                      f"{timing['red_time']} -> {new_red} seconds")
+                changes.append({"junction_id": junction_id, "signal_id": signal["id"],
+                                "road_id": signal["road_id"], "green_time": timing["green_time"],
+                                "old_red_time": timing["red_time"], "new_red_time": new_red})
+    return changes
 
 
 if __name__ == "__main__":

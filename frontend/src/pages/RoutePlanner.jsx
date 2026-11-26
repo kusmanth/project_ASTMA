@@ -3,19 +3,27 @@ import { api } from "../api.js";
 import PageHead from "../components/PageHead.jsx";
 import useAction from "../components/useAction.js";
 import { RouteView } from "../components/ResultView.jsx";
+import { reachableFrom } from "../components/reachable.js";
 
 export default function RoutePlanner({ userId, junctions, roads }) {
   const [state, run] = useAction();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // Pick the first and last junction by default once they load
+  // "To" only offers junctions that roads actually connect to "From"
+  const reachable = reachableFrom(from, roads);
+  const destinations = junctions.filter((j) => reachable.has(j.id));
+
+  // Pick the first junction by default once they load
   useEffect(() => {
-    if (junctions.length >= 2 && !from && !to) {
-      setFrom(String(junctions[0].id));
-      setTo(String(junctions[junctions.length - 1].id));
-    }
+    if (junctions.length && !from) setFrom(String(junctions[0].id));
   }, [junctions]);
+
+  // When "From" changes, keep "To" only if it is still reachable
+  useEffect(() => {
+    if (!destinations.some((j) => String(j.id) === to))
+      setTo(destinations.length ? String(destinations[destinations.length - 1].id) : "");
+  }, [from, roads]);
 
   return (
     <>
@@ -33,11 +41,12 @@ export default function RoutePlanner({ userId, junctions, roads }) {
               {junctions.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
             </select>
           </label>
-          <button className="ghost swap" title="Swap" onClick={() => { setFrom(to); setTo(from); }}>⇄</button>
+          <button className="ghost swap" title="Swap" onClick={() => { if (to) { setFrom(to); setTo(from); } }}>⇄</button>
           <label>
             To
             <select value={to} onChange={(e) => setTo(e.target.value)}>
-              {junctions.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
+              {destinations.length === 0 && <option value="">No road leads out of here</option>}
+              {destinations.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
             </select>
           </label>
           <button
