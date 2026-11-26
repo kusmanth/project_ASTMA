@@ -29,7 +29,9 @@ export default function Trips({ user, junctions, go }) {
 
   // Sensible defaults for the form once data arrives
   useEffect(() => {
-    if (vehicles.length && !form.vehicle_id) setForm((f) => ({ ...f, vehicle_id: String(vehicles[0].id) }));
+    // Emergency drivers get their own vehicle selected first
+    const mine = vehicles.find((v) => v.driver_id === user.id);
+    if (vehicles.length && !form.vehicle_id) setForm((f) => ({ ...f, vehicle_id: String((mine || vehicles[0]).id) }));
   }, [vehicles]);
   useEffect(() => {
     if (junctions.length >= 2 && !form.from)
@@ -93,7 +95,7 @@ export default function Trips({ user, junctions, go }) {
           <label>
             Vehicle
             <select value={form.vehicle_id} onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })}>
-              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.vehicle_number} ({v.vehicle_type.replace("_", " ")})</option>)}
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.vehicle_number} ({v.vehicle_type.replace("_", " ")}){v.driver_id === user.id ? " · mine" : ""}</option>)}
             </select>
           </label>
           <label>

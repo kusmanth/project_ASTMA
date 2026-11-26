@@ -10,7 +10,11 @@ const ROLES = [
 
 export default function Login({ onLogin }) {
   const [mode, setMode] = useState("login"); // "login" or "register"
-  const [form, setForm] = useState({ login: "", password: "", name: "", mobile: "", email: "", user_type: "emergency_driver" });
+  const [form, setForm] = useState({
+    login: "", password: "", name: "", mobile: "", email: "", user_type: "emergency_driver",
+    vehicle_number: "", vehicle_type: "ambulance",
+  });
+  const isDriver = form.user_type === "emergency_driver";
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.value });
@@ -21,14 +25,29 @@ export default function Login({ onLogin }) {
     setBusy(true);
     try {
       if (mode === "register") {
-        await api.register({
+        const user = await api.register({
           name: form.name,
-          mobile: form.mobile,
-          email: form.email || null,
+          email: form.email,
+          mobile: form.mobile || null,
           user_type: form.user_type,
           password: form.password,
         });
-        onLogin(await api.login(form.mobile, form.password));
+        // Emergency drivers register their vehicle too, linked to their account
+        if (isDriver) {
+          try {
+            await api.createVehicle({
+              vehicle_number: form.vehicle_number.toUpperCase().replace(/\s/g, ""),
+              vehicle_type: form.vehicle_type,
+              priority_level: 5,
+              driver_id: user.id,
+            });
+          } catch (err) {
+            setMode("login");
+            setForm((f) => ({ ...f, login: form.email }));
+            throw new Error(`Account created, but the vehicle was not saved: ${err.message}. Sign in and ask an admin to add it.`);
+          }
+        }
+        onLogin(await api.login(form.email, form.password));
       } else {
         onLogin(await api.login(form.login, form.password));
       }
@@ -64,20 +83,35 @@ export default function Login({ onLogin }) {
 
         {mode === "login" ? (
           <label>
-            Mobile number or email
-            <input value={form.login} onChange={set("login")} placeholder="9876500001" required autoFocus />
+            Email or mobile number
+            <input value={form.login} onChange={set("login")} placeholder="you@example.com" required autoFocus />
           </label>
         ) : (
           <>
             <label>Full name<input value={form.name} onChange={set("name")} minLength={4} required autoFocus /></label>
-            <label>Mobile number<input value={form.mobile} onChange={set("mobile")} pattern="\d{10}" title="10 digits" required /></label>
-            <label>Email (optional)<input type="email" value={form.email} onChange={set("email")} /></label>
+            <label>Email<input type="email" value={form.email} onChange={set("email")} required /></label>
+            <label>Mobile number (optional)<input value={form.mobile} onChange={set("mobile")} pattern="\d{10}" title="10 digits" /></label>
             <label>
               Role
               <select value={form.user_type} onChange={set("user_type")}>
                 {ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </label>
+            {isDriver && (
+              <div className="vehicle-box">
+                <b>Your emergency vehicle</b>
+                <label>Vehicle number<input value={form.vehicle_number} onChange={set("vehicle_number")} minLength={4} required placeholder="TS09AB1234" /></label>
+                <label>
+                  Vehicle type
+                  <select value={form.vehicle_type} onChange={set("vehicle_type")}>
+                    <option value="ambulance">Ambulance</option>
+                    <option value="fire_truck">Fire truck</option>
+                    <option value="police">Police</option>
+                    <option value="vvip_convoy">VVIP convoy</option>
+                  </select>
+                </label>
+              </div>
+            )}
           </>
         )}
 

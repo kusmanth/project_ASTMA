@@ -37,16 +37,18 @@ export default function App() {
   const [roads, setRoads] = useState([]);
   const [chat, setChat] = useState([]); // kept here so the chat survives page switches
 
-  // Load junctions and roads once, and check that the API is running
-  useEffect(() => {
-    Promise.all([api.junctions(), api.roads()])
+  // Load junctions and roads (again after any edit), and check that the API is running
+  function reload() {
+    return Promise.all([api.junctions(), api.roads()])
       .then(([j, r]) => {
-        setJunctions(j);
-        setRoads(r);
+        const byId = (a, b) => a.id - b.id;
+        setJunctions([...j].sort(byId));
+        setRoads([...r].sort(byId));
         setOnline(true);
       })
       .catch(() => setOnline(false));
-  }, []);
+  }
+  useEffect(() => { reload(); }, []);
 
   function login(u) {
     try { localStorage.setItem("astma_user", JSON.stringify(u)); } catch { /* private mode */ }
@@ -61,7 +63,7 @@ export default function App() {
 
   if (!user) return <Login onLogin={login} />;
 
-  const shared = { user, userId: user.id, junctions, roads, go: setPage };
+  const shared = { user, userId: user.id, junctions, roads, reload, go: setPage };
   const initials = user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (
@@ -113,8 +115,8 @@ export default function App() {
         )}
         {page === "overview" && <Overview {...shared} />}
         {page === "assistant" && <Assistant {...shared} chat={chat} setChat={setChat} />}
-        {page === "monitoring" && <Monitoring />}
-        {page === "signals" && <Signals roads={roads} />}
+        {page === "monitoring" && <Monitoring {...shared} />}
+        {page === "signals" && <Signals {...shared} />}
         {page === "route" && <RoutePlanner {...shared} />}
         {page === "trips" && <Trips {...shared} />}
         {page === "network" && <Network {...shared} />}

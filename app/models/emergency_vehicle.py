@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func
 from app.database import Base
 
 
@@ -9,6 +9,7 @@ class EmergencyVehicle(Base):
     vehicle_number = Column(String(20), nullable=False, unique=True)
     vehicle_type = Column(String(20), nullable=False)
     priority_level = Column(Integer, nullable=False)
+    driver_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # the emergency driver who owns it
     is_active = Column(Boolean, nullable=False, server_default="true")
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

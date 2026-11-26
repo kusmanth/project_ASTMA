@@ -1,0 +1,18 @@
+# Run everything with:  docker compose up --build
+# Frontend: http://localhost:5173   API docs: http://localhost:8000/docs
+services:
+  backend:
+    build: .
+    env_file: .env          # DATABASE_URL, GEMINI_API_KEY, PINECONE_API_KEY (never committed)
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "5173:80"           # 5173 is the port our API's CORS allows
+    depends_on:
+      - backend

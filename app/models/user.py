@@ -7,7 +7,7 @@ class User(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False)
-    mobile = Column(String(10), nullable=False, unique=True)
+    mobile = Column(String(10), nullable=True, unique=True)
     email = Column(String(255), nullable=True, unique=True)
     user_type = Column(String(20), nullable=False)
     password_hash = Column(String(255), nullable=False)
