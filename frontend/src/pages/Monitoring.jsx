@@ -47,7 +47,7 @@ export default function Monitoring({ user, roads }) {
       <PageHead
         eyebrow="Agent · Traffic Monitoring"
         title="Live traffic"
-        text="Uses each road's latest reading from the last 15 minutes and rates the congestion."
+        text="Uses each road's latest reading from the last 30 minutes and rates the congestion."
       >
         <div className="actions">
           {canEdit(user) && !form && (

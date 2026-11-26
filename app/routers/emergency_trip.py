@@ -5,7 +5,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import EmergencyTrip, EmergencyVehicle, Junction, User
+from app.models import EmergencyTrip, EmergencyVehicle, Hospital, Junction, User
+from app.services.green_corridor import close_corridor, open_corridor
 from app.schemas.emergency_trip import (
     EmergencyTripCreate,
     EmergencyTripResponse,
@@ -38,6 +39,17 @@ def check_vehicle_and_user(vehicle_id: int, user_id: int, db: Session) -> None:
         raise HTTPException(status_code=403, detail="Only emergency drivers, police or admin can start a trip")
 
 
+def check_hospital(vehicle_id: int, to_id: int, db: Session) -> None:
+    """A hospital's vehicle can only drive to that hospital."""
+    vehicle = db.get(EmergencyVehicle, vehicle_id)
+    if vehicle is None or vehicle.hospital_id is None:
+        return
+    hospital = db.get(Hospital, vehicle.hospital_id)
+    if hospital is not None and hospital.nearest_junction_id != to_id:
+        raise HTTPException(status_code=400,
+                            detail=f"This vehicle belongs to {hospital.hospital_name}; the trip must end there")
+
+
 def check_junctions(from_id: int, to_id: int, db: Session) -> None:
     if from_id == to_id:
         raise HTTPException(status_code=400, detail="Start and destination junctions must be different")
@@ -50,7 +62,9 @@ def check_junctions(from_id: int, to_id: int, db: Session) -> None:
 def create_trip(data: EmergencyTripCreate, db: Session = Depends(get_db)):
     check_vehicle_and_user(data.vehicle_id, data.created_by, db)
     check_junctions(data.from_junction_id, data.to_junction_id, db)
+    check_hospital(data.vehicle_id, data.to_junction_id, db)
     trip = EmergencyTrip(**data.model_dump())
+    open_corridor(trip, db)  # route signals turn green, cross traffic red
     db.add(trip)
     db.commit()
     db.refresh(trip)
@@ -97,6 +111,7 @@ def update_trip(trip_id: int, data: EmergencyTripUpdate, db: Session = Depends(g
         )
     if changes.get("status") in ("completed", "cancelled") and trip.end_time is None:
         trip.end_time = datetime.now(timezone.utc).replace(tzinfo=None)
+        close_corridor(trip, db)  # trip over: route signals back to red
     for key, value in changes.items():
         setattr(trip, key, value)
     db.commit()
@@ -107,5 +122,7 @@ def update_trip(trip_id: int, data: EmergencyTripUpdate, db: Session = Depends(g
 @router.delete("/{trip_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_trip(trip_id: int, db: Session = Depends(get_db)):
     trip = get_trip_or_404(trip_id, db)
+    if trip.status == "active":
+        close_corridor(trip, db)
     db.delete(trip)
     db.commit()

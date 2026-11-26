@@ -9,7 +9,7 @@ const VEHICLE_TYPES = ["ambulance", "fire_truck", "police", "vvip_convoy"];
 const EMPTY = {
   Roads: { road_name: "", from_junction_id: "", to_junction_id: "", distance_km: "", lanes: 2, two_way: true, is_active: true },
   Junctions: { junction_name: "", junction_type: 4, street: "", city: "Hyderabad", state: "Telangana", pincode: "500016", latitude: "17.43", longitude: "78.45", is_active: true },
-  Vehicles: { vehicle_number: "", vehicle_type: "ambulance", priority_level: 5, driver_id: "", is_active: true },
+  Vehicles: { vehicle_number: "", vehicle_type: "ambulance", priority_level: 5, driver_id: "", hospital_id: "", is_active: true },
 };
 
 export default function Network({ user, junctions, roads, reload }) {
@@ -107,6 +107,7 @@ export default function Network({ user, junctions, roads, reload }) {
           vehicle_type: v.vehicle_type,
           priority_level: Number(v.priority_level),
           driver_id: v.driver_id ? Number(v.driver_id) : null,
+          hospital_id: v.hospital_id ? Number(v.hospital_id) : null,
           is_active: v.is_active,
         };
         if (form.mode === "edit") await api.updateVehicle(form.id, vehicle);
@@ -186,7 +187,7 @@ export default function Network({ user, junctions, roads, reload }) {
               {form.mode === "add" && (
                 <label className="check wide">
                   <input type="checkbox" checked={form.values.two_way} onChange={set("two_way")} />
-                  Two-way road (also add the return direction)
+                  Also add the return side (divided road)
                 </label>
               )}
             </>
@@ -224,6 +225,12 @@ export default function Network({ user, junctions, roads, reload }) {
                 <select value={form.values.driver_id ?? ""} onChange={set("driver_id")}>
                   <option value="">No driver</option>
                   {drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Hospital">
+                <select value={form.values.hospital_id ?? ""} onChange={set("hospital_id")}>
+                  <option value="">No hospital (can go anywhere)</option>
+                  {extra.hospitals.map((h) => <option key={h.id} value={h.id}>{h.hospital_name}</option>)}
                 </select>
               </Field>
             </>
@@ -267,10 +274,10 @@ export default function Network({ user, junctions, roads, reload }) {
             )}
             {tab === "Vehicles" && (
               <>
-                <thead><tr><th>#</th><th>Number</th><th>Type</th><th>Priority</th><th>Driver</th><th>Status</th>{editable && <th></th>}</tr></thead>
+                <thead><tr><th>#</th><th>Number</th><th>Type</th><th>Priority</th><th>Driver</th><th>Hospital</th><th>Status</th>{editable && <th></th>}</tr></thead>
                 <tbody>{extra.vehicles.map((v) => (
                   <tr key={v.id}><td>{v.id}</td><td><b>{v.vehicle_number}</b></td><td>{v.vehicle_type.replace("_", " ")}</td>
-                    <td>{v.priority_level} / 5</td><td>{driverName(v.driver_id)}</td><td>{badge(v.is_active)}</td>{rowActions(v)}</tr>
+                    <td>{v.priority_level} / 5</td><td>{driverName(v.driver_id)}</td><td>{extra.hospitals.find((h) => h.id === v.hospital_id)?.hospital_name || "-"}</td><td>{badge(v.is_active)}</td>{rowActions(v)}</tr>
                 ))}</tbody>
               </>
             )}

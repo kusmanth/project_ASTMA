@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.js";
 import PageHead from "../components/PageHead.jsx";
+import { reachableFrom } from "../components/reachable.js";
 
 const URGENCY_CLASS = { critical: "high", normal: "medium", none: "none" };
 const STATUS_CLASS = { active: "low", completed: "none", cancelled: "high" };
 const time = (t) => (t ? t.replace("T", " ").slice(5, 16) : "-");
 
-export default function Trips({ user, junctions, go }) {
+export default function Trips({ user, junctions, roads, go }) {
   const [trips, setTrips] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
   const [filter, setFilter] = useState("active");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -17,9 +19,10 @@ export default function Trips({ user, junctions, go }) {
 
   async function load() {
     try {
-      const [t, v] = await Promise.all([api.trips(), api.vehicles()]);
+      const [t, v, h] = await Promise.all([api.trips(), api.vehicles(), api.hospitals()]);
       setTrips([...t].sort((a, b) => b.id - a.id));
       setVehicles(v);
+      setHospitals(h);
       setError("");
     } catch (err) {
       setError(err.message);
@@ -33,10 +36,29 @@ export default function Trips({ user, junctions, go }) {
     const mine = vehicles.find((v) => v.driver_id === user.id);
     if (vehicles.length && !form.vehicle_id) setForm((f) => ({ ...f, vehicle_id: String((mine || vehicles[0]).id) }));
   }, [vehicles]);
+  // A hospital's vehicle always drives TO its hospital. Other vehicles can go anywhere.
+  const selected = vehicles.find((v) => String(v.id) === form.vehicle_id);
+  const hospital = hospitals.find((h) => h.id === selected?.hospital_id);
+  const hospitalJunction = hospital?.nearest_junction_id;
+
+  // "From": for a hospital vehicle, only places that have a road path to the hospital
+  const starts = hospital
+    ? junctions.filter((j) => j.id !== hospitalJunction && reachableFrom(j.id, roads).has(hospitalJunction))
+    : junctions;
+  // "To": the hospital, or every junction that roads connect to "From"
+  const reachable = reachableFrom(form.from, roads);
+  const destinations = hospital
+    ? junctions.filter((j) => j.id === hospitalJunction)
+    : junctions.filter((j) => reachable.has(j.id));
+
   useEffect(() => {
-    if (junctions.length >= 2 && !form.from)
-      setForm((f) => ({ ...f, from: String(junctions[0].id), to: String(junctions[junctions.length - 1].id) }));
-  }, [junctions]);
+    if (!starts.some((j) => String(j.id) === form.from))
+      setForm((f) => ({ ...f, from: starts.length ? String(starts[0].id) : "" }));
+  }, [form.vehicle_id, junctions, roads, hospitals]);
+  useEffect(() => {
+    if (!destinations.some((j) => String(j.id) === form.to))
+      setForm((f) => ({ ...f, to: destinations.length ? String(destinations[destinations.length - 1].id) : "" }));
+  }, [form.from, form.vehicle_id, roads, hospitals]);
 
   const junction = (id) => junctions.find((j) => j.id === id)?.junction_name || `Junction ${id}`;
   const vehicle = (id) => vehicles.find((v) => v.id === id);
@@ -48,8 +70,8 @@ export default function Trips({ user, junctions, go }) {
     setError("");
     setNotice("");
     try {
-      await action();
-      setNotice(message);
+      const result = await action();
+      setNotice(typeof message === "function" ? message(result) : message);
       await load();
     } catch (err) {
       setError(err.message);
@@ -70,7 +92,10 @@ export default function Trips({ user, junctions, go }) {
       });
       setFilter("active");
       return trip;
-    }, "New emergency trip started.");
+    }, (trip) => {
+      const names = (trip.route || []).map((id) => roads.find((r) => r.id === id)?.road_name || `road ${id}`);
+      return `Trip started. Green corridor: ${names.length} signals turned green (${names.join(" → ")}); cross traffic at those junctions is red.`;
+    });
   }
 
   return (
@@ -101,13 +126,14 @@ export default function Trips({ user, junctions, go }) {
           <label>
             From
             <select value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })}>
-              {junctions.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
+              {starts.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
             </select>
           </label>
           <label>
-            To
-            <select value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })}>
-              {junctions.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
+            {hospital ? `To (${hospital.hospital_name})` : "To"}
+            <select value={form.to} disabled={!!hospital} onChange={(e) => setForm({ ...form, to: e.target.value })}>
+              {destinations.length === 0 && <option value="">No road leads out of here</option>}
+              {destinations.map((j) => <option key={j.id} value={j.id}>{j.junction_name}</option>)}
             </select>
           </label>
           <label>
@@ -118,7 +144,7 @@ export default function Trips({ user, junctions, go }) {
               <option value="none">None</option>
             </select>
           </label>
-          <button type="submit" disabled={busy || !form.vehicle_id}>Start trip</button>
+          <button type="submit" disabled={busy || !form.vehicle_id || !form.to}>Start trip</button>
         </div>
       </form>
 

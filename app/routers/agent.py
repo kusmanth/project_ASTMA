@@ -120,8 +120,8 @@ def run_traffic_monitoring():
 def run_traffic_signal():
     """Execute the Traffic Signal Agent."""
     try:
-        manage_signal_timings()
-        return {"message": "Traffic Signal Agent executed successfully"}
+        red_changes = manage_signal_timings()
+        return {"message": "Traffic Signal Agent executed successfully", "red_time_changes": red_changes}
     except Exception as error:
         raise HTTPException(status_code=500, detail=str(error))
 

@@ -10,6 +10,7 @@ class EmergencyVehicle(Base):
     vehicle_type = Column(String(20), nullable=False)
     priority_level = Column(Integer, nullable=False)
     driver_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # the emergency driver who owns it
+    hospital_id = Column(Integer, ForeignKey("hospitals.id"), nullable=True)  # the hospital it belongs to
     is_active = Column(Boolean, nullable=False, server_default="true")
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

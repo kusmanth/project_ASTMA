@@ -10,6 +10,7 @@ class EmergencyVehicleCreate(BaseModel):
     vehicle_type: VehicleType
     priority_level: int = Field(ge=1, le=5)
     driver_id: int | None = None
+    hospital_id: int | None = None
     is_active: bool = True
 
 
@@ -18,6 +19,7 @@ class EmergencyVehicleUpdate(BaseModel):
     vehicle_type: VehicleType | None = None
     priority_level: int | None = Field(default=None, ge=1, le=5)
     driver_id: int | None = None
+    hospital_id: int | None = None
     is_active: bool | None = None
 
 

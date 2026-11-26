@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api.js";
 
 const ROLES = [
@@ -12,8 +12,10 @@ export default function Login({ onLogin }) {
   const [mode, setMode] = useState("login"); // "login" or "register"
   const [form, setForm] = useState({
     login: "", password: "", name: "", mobile: "", email: "", user_type: "emergency_driver",
-    vehicle_number: "", vehicle_type: "ambulance",
+    vehicle_number: "", vehicle_type: "ambulance", hospital_id: "",
   });
+  const [hospitals, setHospitals] = useState([]);
+  useEffect(() => { api.hospitals().then(setHospitals).catch(() => {}); }, []);
   const isDriver = form.user_type === "emergency_driver";
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -40,6 +42,7 @@ export default function Login({ onLogin }) {
               vehicle_type: form.vehicle_type,
               priority_level: 5,
               driver_id: user.id,
+              hospital_id: form.vehicle_type === "ambulance" && form.hospital_id ? Number(form.hospital_id) : null,
             });
           } catch (err) {
             setMode("login");
@@ -110,6 +113,15 @@ export default function Login({ onLogin }) {
                     <option value="vvip_convoy">VVIP convoy</option>
                   </select>
                 </label>
+                {form.vehicle_type === "ambulance" && (
+                  <label>
+                    Hospital you belong to
+                    <select value={form.hospital_id} onChange={set("hospital_id")} required>
+                      <option value="">Choose a hospital</option>
+                      {hospitals.filter((h) => h.is_active).map((h) => <option key={h.id} value={h.id}>{h.hospital_name}</option>)}
+                    </select>
+                  </label>
+                )}
               </div>
             )}
           </>

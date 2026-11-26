@@ -11,6 +11,9 @@ async function loadSignals() {
 
 const NEW_SIGNAL = { junction_id: "", road_id: "", green_time: 45, yellow_time: 5, red_time: 60 };
 
+// Badge colour for the light each signal is showing right now (green during an emergency corridor)
+const LIGHT = { green: "low", yellow: "medium", red: "high" };
+
 export default function Signals({ user, roads, junctions }) {
   const [state, run] = useAction();
   const [message, setMessage] = useState("");
@@ -29,7 +32,7 @@ export default function Signals({ user, roads, junctions }) {
     setMessage("");
     await run(async () => {
       const result = await api.trafficSignal();
-      setMessage(`${result.message}. Updated timings are shown below.`);
+      setMessage(`${result.message}. ${result.red_time_changes?.length || 0} red times were balanced at junctions. Updated timings are shown below.`);
       return loadSignals();
     });
   }
@@ -147,7 +150,7 @@ export default function Signals({ user, roads, junctions }) {
             <div className="table-wrap">
               <table className="table">
                 <thead>
-                  <tr><th>Signal</th><th>Road</th><th>Junction</th><th>Green</th><th>Yellow</th><th>Red</th><th>Last updated</th>{editable && <th></th>}</tr>
+                  <tr><th>Signal</th><th>Light now</th><th>Road</th><th>Junction</th><th>Green</th><th>Yellow</th><th>Red</th><th>Last updated</th>{editable && <th></th>}</tr>
                 </thead>
                 <tbody>
                   {state.data.timings.map((t) => {
@@ -155,6 +158,7 @@ export default function Signals({ user, roads, junctions }) {
                     return (
                       <tr key={t.id}>
                         <td>#{t.signal_id}</td>
+                        <td>{s && <span className={`badge ${LIGHT[s.current_state] || "none"}`}>{s.current_state}</span>}</td>
                         <td>{s ? roadName(s.road_id) : "-"}</td>
                         <td>{s ? junctionName(s.junction_id) : "-"}</td>
                         <td><b className="green">{t.green_time}s</b></td>

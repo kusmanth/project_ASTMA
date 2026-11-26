@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import EmergencyVehicle, User
+from app.models import EmergencyVehicle, User, Hospital
 from app.schemas.emergency_vehicle import (
     EmergencyVehicleCreate,
     EmergencyVehicleResponse,
@@ -21,9 +21,11 @@ def get_vehicle_or_404(vehicle_id: int, db: Session) -> EmergencyVehicle:
     return vehicle
 
 
-def check_driver(driver_id: int | None, db: Session) -> None:
+def check_driver(driver_id: int | None, db: Session, hospital_id: int | None = None) -> None:
     if driver_id is not None and db.get(User, driver_id) is None:
         raise HTTPException(status_code=400, detail="Driver (user) not found")
+    if hospital_id is not None and db.get(Hospital, hospital_id) is None:
+        raise HTTPException(status_code=400, detail="Hospital not found")
 
 
 def save(vehicle: EmergencyVehicle, db: Session) -> EmergencyVehicle:
@@ -38,7 +40,7 @@ def save(vehicle: EmergencyVehicle, db: Session) -> EmergencyVehicle:
 
 @router.post("", response_model=EmergencyVehicleResponse, status_code=status.HTTP_201_CREATED)
 def create_vehicle(data: EmergencyVehicleCreate, db: Session = Depends(get_db)):
-    check_driver(data.driver_id, db)
+    check_driver(data.driver_id, db, data.hospital_id)
     vehicle = EmergencyVehicle(**data.model_dump())
     db.add(vehicle)
     return save(vehicle, db)
@@ -57,7 +59,7 @@ def get_vehicle(vehicle_id: int, db: Session = Depends(get_db)):
 @router.put("/{vehicle_id}", response_model=EmergencyVehicleResponse)
 def replace_vehicle(vehicle_id: int, data: EmergencyVehicleCreate, db: Session = Depends(get_db)):
     vehicle = get_vehicle_or_404(vehicle_id, db)
-    check_driver(data.driver_id, db)
+    check_driver(data.driver_id, db, data.hospital_id)
     for key, value in data.model_dump().items():
         setattr(vehicle, key, value)
     return save(vehicle, db)
@@ -67,7 +69,7 @@ def replace_vehicle(vehicle_id: int, data: EmergencyVehicleCreate, db: Session =
 def update_vehicle(vehicle_id: int, data: EmergencyVehicleUpdate, db: Session = Depends(get_db)):
     vehicle = get_vehicle_or_404(vehicle_id, db)
     changes = data.model_dump(exclude_unset=True)
-    check_driver(changes.get("driver_id"), db)
+    check_driver(changes.get("driver_id"), db, changes.get("hospital_id"))
     for key, value in changes.items():
         setattr(vehicle, key, value)
     return save(vehicle, db)
