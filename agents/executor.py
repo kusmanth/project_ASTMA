@@ -8,6 +8,7 @@ The loop, step by step:
 """
 import json
 import sys
+import time
 
 from google.genai import types
 from mcp import ClientSession, StdioServerParameters
@@ -28,12 +29,14 @@ MAX_ROUNDS = 10  # safety limit, so Gemini can never loop forever
 
 
 async def execute(plan: dict, user_id: int) -> str:
+    start = time.perf_counter()
     async with stdio_client(SERVER) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
             # 1. Get the menu from the MCP server and describe it to Gemini
             menu = await session.list_tools()
+            print(f"[timing] MCP server ready in {time.perf_counter() - start:.1f}s")
             declarations = [
                 types.FunctionDeclaration(name=t.name, description=t.description or "",
                                           parameters_json_schema=t.inputSchema)
@@ -49,9 +52,11 @@ async def execute(plan: dict, user_id: int) -> str:
             history = [types.Content(role="user", parts=[types.Part(
                 text=f"Current user id: {user_id}\nPlan:\n{json.dumps(plan, indent=2)}")])]
 
-            for _ in range(MAX_ROUNDS):
+            for round_no in range(1, MAX_ROUNDS + 1):
+                t = time.perf_counter()
                 response = await agenerate(
                     contents=history, config=config)
+                print(f"[timing] Gemini round {round_no}: {time.perf_counter() - t:.1f}s")
 
                 # 4. No tool requested: this is the final answer
                 if not response.function_calls:

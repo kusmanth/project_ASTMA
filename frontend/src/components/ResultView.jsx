@@ -50,6 +50,12 @@ export function RouteView({ result, roads, junctions }) {
           </li>
         ))}
       </ol>
+      {result.reasons?.length > 0 && (
+        <div className="why">
+          <b>Why this route?</b>
+          <ul>{result.reasons.map((r, i) => <li key={i}>{r}</li>)}</ul>
+        </div>
+      )}
       {result.route_request && <p className="muted small">Saved as route request #{result.route_request.id}</p>}
     </div>
   );

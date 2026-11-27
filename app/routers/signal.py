@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Junction, Road, Signal
 from app.schemas.signal import SignalCreate, SignalResponse, SignalUpdate
+from app.services.signal_live import live_states
 
 router = APIRouter(prefix="/signals", tags=["Signals"])
 
@@ -37,6 +38,11 @@ def create_signal(data: SignalCreate, db: Session = Depends(get_db)):
 def get_all_signals(db: Session = Depends(get_db)):
     return db.scalars(select(Signal)).all()
 
+@router.get("/live")
+def get_live_lights(db: Session = Depends(get_db)):
+    """The light every signal shows right now (normal cycle, or held by an emergency trip)."""
+    return live_states(db)
+
 @router.get("/{signal_id}", response_model=SignalResponse)
 def get_signal(signal_id: int, db: Session = Depends(get_db)):
     return get_signal_or_404(signal_id, db)
@@ -47,9 +53,9 @@ def replace_signal(signal_id: int, data: SignalCreate, db: Session = Depends(get
     check_junction_and_road(data.junction_id, data.road_id, db)
     for key, value in data.model_dump().items():
         setattr(signal, key, value)
-        db.commit()
-        db.refresh(signal)
-        return signal
+    db.commit()
+    db.refresh(signal)
+    return signal
 
 @router.patch("/{signal_id}", response_model=SignalResponse)
 def update_signal(signal_id: int, data: SignalUpdate, db: Session = Depends(get_db)):

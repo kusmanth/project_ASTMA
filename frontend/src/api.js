@@ -57,6 +57,7 @@ export const api = {
   junctions: () => request("GET", "/junctions"),
   roads: () => request("GET", "/roads"),
   signals: () => request("GET", "/signals"),
+  liveSignals: () => request("GET", "/signals/live"),
   signalTimings: () => request("GET", "/signal-timings"),
   trips: () => request("GET", "/emergency-trips"),
   routeRequests: () => request("GET", "/route-requests"),
