@@ -23,6 +23,20 @@ export default function Signals({ user, roads, junctions }) {
   const editable = canEdit(user);
   useEffect(() => { run(loadSignals); }, []);
 
+  // Live lights: ask the backend every 2 seconds what each light shows right now
+  const [live, setLive] = useState([]);
+  useEffect(() => {
+    let stop = false;
+    const tick = () => api.liveSignals().then((d) => { if (!stop) setLive(d); }).catch(() => {});
+    tick();
+    const timer = setInterval(tick, 2000);
+    return () => { stop = true; clearInterval(timer); };
+  }, []);
+  const liveOf = (signalId) => live.find((l) => l.signal_id === signalId);
+  const liveJunctions = [...new Set(live.map((l) => l.junction_id))]
+    .map((id) => ({ id, lights: live.filter((l) => l.junction_id === id) }))
+    .sort((a, b) => a.id - b.id);
+
   const roadName = (id) => roads.find((r) => r.id === id)?.road_name || `Road ${id}`;
   const junctionName = (id) => junctions.find((j) => j.id === id)?.junction_name || `Junction ${id}`;
   const signalOf = (id) => state.data?.signals.find((s) => s.id === id);
@@ -111,6 +125,26 @@ export default function Signals({ user, roads, junctions }) {
         <div className="tile"><span className="badge high">high</span><b>60 s</b><small>green time</small></div>
       </div>
 
+      {liveJunctions.length > 0 && (
+        <div className="panel">
+          <div className="panel-title">Live junctions <small className="muted">· updates every 2 s · 🚑 = held green for an emergency trip</small></div>
+          <div className="junction-grid">
+            {liveJunctions.map((j) => (
+              <div key={j.id} className={`jcard ${j.lights.some((l) => l.mode === "emergency") ? "emergency" : ""}`}>
+                <b>{junctionName(j.id)}</b>
+                {j.lights.map((l) => (
+                  <div key={l.signal_id} className="jrow">
+                    <span className={`lamp ${l.state}`} />
+                    <span className="jroad">{roadName(l.road_id).replace(/ to .*/, "")}</span>
+                    <small>{l.mode === "emergency" ? (l.state === "green" ? "🚑" : "hold") : `${l.seconds_left}s`}</small>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {form && (
         <FormPanel
           title={form.mode === "add" ? "Add a signal" : `Edit timing for signal #${form.timing.signal_id}`}
@@ -158,7 +192,7 @@ export default function Signals({ user, roads, junctions }) {
                     return (
                       <tr key={t.id}>
                         <td>#{t.signal_id}</td>
-                        <td>{s && <span className={`badge ${LIGHT[s.current_state] || "none"}`}>{s.current_state}</span>}</td>
+                        <td>{(() => { const l = liveOf(t.signal_id); const st = l?.state || s?.current_state; return st && <span className={`badge ${LIGHT[st] || "none"}`}>{st}{l?.mode === "emergency" ? " 🚑" : ""}</span>; })()}</td>
                         <td>{s ? roadName(s.road_id) : "-"}</td>
                         <td>{s ? junctionName(s.junction_id) : "-"}</td>
                         <td><b className="green">{t.green_time}s</b></td>

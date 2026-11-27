@@ -1,5 +1,6 @@
 """Agent 1: Orchestrator (RAG). Finds the right task in the knowledge base and writes the plan."""
 import json
+import time
 
 from google.genai import types
 
@@ -37,7 +38,9 @@ CANT_HELP = {"task": None, "missing": [], "steps": [], "details": {},
 
 def make_plan(request: str, user_id: int) -> dict:
     # 1. RAG: find the closest tasks, keep only the ones that are close enough
+    start = time.perf_counter()
     found = search_top(request, TOP_K)
+    rag_seconds = time.perf_counter() - start
     candidates = [(name, content, d) for name, content, d in found if d <= MAX_DISTANCE]
     if not candidates:
         return CANT_HELP
@@ -49,6 +52,7 @@ def make_plan(request: str, user_id: int) -> dict:
         config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0),
     )
     plan = json.loads(response.text)
+    print(f"[timing] plan: RAG search {rag_seconds:.1f}s, Gemini {time.perf_counter() - start - rag_seconds:.1f}s")
 
     # 3. Safety check: Gemini must pick one of our candidates
     names = [name for name, _, _ in candidates]

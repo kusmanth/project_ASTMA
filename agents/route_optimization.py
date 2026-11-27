@@ -96,6 +96,40 @@ def find_shortest_route(
     }
 
 
+def explain_route(from_junction_id: int, to_junction_id: int, chosen: dict,
+                  roads: list, junctions: list) -> list[str]:
+    """Say in plain words why this route was chosen."""
+
+    names = {j["id"]: j.get("junction_name", f"Junction {j['id']}") for j in junctions}
+    by_id = {r["id"]: r for r in roads}
+
+    def path(route_ids):
+        stops = [names[by_id[route_ids[0]]["from_junction_id"]]]
+        stops += [names[by_id[r]["to_junction_id"]] for r in route_ids]
+        return " → ".join(stops)
+
+    reasons = [f"Shortest open route: {chosen['total_distance_km']} km over "
+               f"{len(chosen['suggested_route'])} roads ({path(chosen['suggested_route'])})."]
+
+    # What would the best route be if every road and junction were open?
+    all_open = find_shortest_route(
+        from_junction_id, to_junction_id,
+        [{**r, "is_active": True} for r in roads],
+        [{**j, "is_active": True} for j in junctions],
+    )
+    if all_open["total_distance_km"] < chosen["total_distance_km"]:
+        closed = [f"road '{by_id[r].get('road_name', r)}' is closed"
+                  for r in all_open["suggested_route"] if not by_id[r]["is_active"]]
+        closed += [f"junction {names[by_id[r]['to_junction_id']]} is closed"
+                   for r in all_open["suggested_route"][:-1]
+                   if not next(j for j in junctions if j["id"] == by_id[r]["to_junction_id"])["is_active"]]
+        reasons.append(f"A shorter route ({all_open['total_distance_km']} km, {path(all_open['suggested_route'])}) "
+                       f"was skipped because {' and '.join(closed)}.")
+    else:
+        reasons.append("No closed roads or junctions affect this trip; this is the shortest route on the map.")
+    return reasons
+
+
 def optimize_route(
     user_id: int,
     from_junction_id: int,
@@ -144,6 +178,7 @@ def optimize_route(
         "to_junction_id": to_junction_id,
         "suggested_route": route_result["suggested_route"],
         "total_distance_km": route_result["total_distance_km"],
+        "reasons": explain_route(from_junction_id, to_junction_id, route_result, roads, junctions),
         "route_request": save_result["data"]
     }
 

@@ -126,6 +126,13 @@ def manage_signal_timings() -> list:
     return balance_red_times()
 
 
+def calculate_red_times(timings: list) -> list:
+    """Red time for each signal at ONE junction = green + yellow of all the others."""
+
+    cycle = sum(t["green_time"] + t["yellow_time"] for t in timings)
+    return [cycle - (t["green_time"] + t["yellow_time"]) for t in timings]
+
+
 def balance_red_times() -> list:
     """At each junction the signals take turns: while one road is green, the others wait.
 
@@ -152,10 +159,9 @@ def balance_red_times() -> list:
         if len(pairs) < 2:
             continue  # a single signal has nobody to take turns with
 
-        cycle = sum(t["green_time"] + t["yellow_time"] for _, t in pairs)
+        reds = calculate_red_times([timing for _, timing in pairs])
 
-        for signal, timing in pairs:
-            new_red = cycle - (timing["green_time"] + timing["yellow_time"])
+        for (signal, timing), new_red in zip(pairs, reds):
             if timing["red_time"] == new_red:
                 continue
             result = update_signal_timing(

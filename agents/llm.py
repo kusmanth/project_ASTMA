@@ -25,6 +25,24 @@ client = genai.Client(
 )
 
 
+# Speed: Gemini "thinks" before answering, which adds seconds to every call.
+# Our tasks are simple (pick a task, call a tool), so we ask for LOW thinking.
+# Set GEMINI_THINKING=off in .env to send no thinking setting at all.
+THINKING = os.getenv("GEMINI_THINKING", "low").strip().lower()
+
+
+def _with_low_thinking(kwargs: dict) -> dict:
+    if THINKING == "off":
+        return kwargs
+    config = kwargs.get("config") or types.GenerateContentConfig()
+    config = config.model_copy(update={"thinking_config": types.ThinkingConfig(thinking_level=THINKING)})
+    return {**kwargs, "config": config}
+
+
+def _thinking_not_supported(error: errors.APIError) -> bool:
+    return error.code == 400 and "think" in str(error).lower()
+
+
 def _should_try_next(error: errors.APIError) -> bool:
     """Busy server (5xx), daily quota used up (429) or unknown model name (404): try the next model."""
     return isinstance(error, errors.ServerError) or error.code in (404, 429)
@@ -34,7 +52,12 @@ def generate(**kwargs):
     """Like client.models.generate_content, but falls back to the next model when one is busy."""
     for i, model in enumerate(CHAT_MODELS):
         try:
-            return client.models.generate_content(model=model, **kwargs)
+            try:
+                return client.models.generate_content(model=model, **_with_low_thinking(kwargs))
+            except errors.APIError as error:
+                if not _thinking_not_supported(error):
+                    raise
+                return client.models.generate_content(model=model, **kwargs)  # model has no thinking setting
         except errors.APIError as error:
             if not _should_try_next(error) or i == len(CHAT_MODELS) - 1:
                 raise
@@ -45,7 +68,12 @@ async def agenerate(**kwargs):
     """Async version of generate(), used by the MCP executor."""
     for i, model in enumerate(CHAT_MODELS):
         try:
-            return await client.aio.models.generate_content(model=model, **kwargs)
+            try:
+                return await client.aio.models.generate_content(model=model, **_with_low_thinking(kwargs))
+            except errors.APIError as error:
+                if not _thinking_not_supported(error):
+                    raise
+                return await client.aio.models.generate_content(model=model, **kwargs)
         except errors.APIError as error:
             if not _should_try_next(error) or i == len(CHAT_MODELS) - 1:
                 raise
