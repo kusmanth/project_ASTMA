@@ -1,0 +1,21 @@
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: astma-backend
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: astma-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend

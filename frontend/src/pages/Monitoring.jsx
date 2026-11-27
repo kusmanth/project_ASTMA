@@ -13,7 +13,7 @@ export default function Monitoring() {
       <PageHead
         eyebrow="Agent · Traffic Monitoring"
         title="Live traffic"
-        text="Uses each road's latest reading from the last 15 minutes and rates the congestion."
+        text="Uses each road's latest available reading and rates the congestion."
       >
         <button onClick={() => run(api.trafficMonitoring)} disabled={state.busy}>
           {state.busy ? "Checking..." : "Check again"}

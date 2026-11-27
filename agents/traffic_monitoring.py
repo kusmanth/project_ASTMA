@@ -1,8 +1,6 @@
 
 """Traffic Monitoring Agent: checks active roads and classifies congestion."""
 
-from datetime import datetime, timezone
-
 from agents.mcp_server import list_roads, get_traffic_readings
 
 
@@ -30,23 +28,8 @@ def classify_traffic(density: float) -> str:
         return "high"
 
 
-def check_reading_time(reading_time: str) -> bool:
-    """Check whether the reading is within the last 15 minutes."""
-
-    timestamp = datetime.fromisoformat(reading_time.replace("Z", "+00:00"))
-
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=timezone.utc)
-
-    current_time = datetime.now(timezone.utc)
-
-    age = (current_time - timestamp).total_seconds() / 60
-
-    return 0 <= age <= 15
-
-
 def monitor_traffic() -> list:
-    """Monitor all active roads using MCP tools."""
+    """Monitor all active roads using their latest saved readings."""
 
     roads_result = list_roads()
     readings_result = get_traffic_readings()
@@ -76,7 +59,9 @@ def monitor_traffic() -> list:
             reports.append({
                 "road_id": road["id"],
                 "road_name": road["road_name"],
-                "traffic_status": "No recent data"
+                "lanes": road["lanes"],
+                "density": None,
+                "traffic_status": "No data"
             })
             continue
 
@@ -84,14 +69,6 @@ def monitor_traffic() -> list:
             road_readings,
             key=lambda item: item["reading_time"]
         )
-
-        if not check_reading_time(latest_reading["reading_time"]):
-            reports.append({
-                "road_id": road["id"],
-                "road_name": road["road_name"],
-                "traffic_status": "No recent data"
-            })
-            continue
 
         density = calculate_density(latest_reading, road["lanes"])
         congestion = classify_traffic(density)
@@ -118,3 +95,4 @@ if __name__ == "__main__":
 
     except Exception as error:
         print("Error:", error)
+
